@@ -1094,3 +1094,56 @@ section[id] {
 .main-content {
   min-width: 0;
 }
+/* Final accessibility and compact-layout refinements */
+:where(button, input, a, select):focus-visible {
+  outline: 2px solid #43d9ed;
+  outline-offset: 3px;
+}
+button:disabled { cursor: not-allowed; }
+@media (max-width: 800px) {
+  .brand > div:last-child, .sidebar-bottom { display: none; }
+  .nav-item, .nav-item:not(.active), .nav-item.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 42px;
+    padding: 10px 5px;
+    font-size: 0;
+  }
+  .nav-item svg { flex: 0 0 auto; }
+}
+
+
+/* Cloud mission synchronization indicator */
+.cloud-sync {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 9px;
+  border: 1px solid #294354;
+  border-radius: 7px;
+  color: #9db4c6;
+  background: #0b1b29;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .7px;
+  white-space: nowrap;
+}
+.cloud-sync > span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #8da4b8;
+}
+.cloud-synced > span { background: #43dda0; box-shadow: 0 0 8px #43dda0; }
+.cloud-saving > span, .cloud-loading > span, .cloud-connecting > span {
+  background: #f2bd58;
+  box-shadow: 0 0 8px #f2bd58;
+}
+.cloud-error { color: #ff9999; border-color: #713d46; }
+.cloud-error > span { background: #ff6868; }
+.cloud-new > span { background: #4bd8e8; }
+@media (max-width: 760px) {
+  .cloud-sync { font-size: 8px; padding: 6px; }
+}

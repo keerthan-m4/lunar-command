@@ -153,27 +153,60 @@ export default function MissionEvents({
   onPendingChange,
   onApply
 }) {
-  const [activeEvent, setActiveEvent] = useState(null);
-  const [eventLog, setEventLog] = useState([]);
-  const [lastCheckedDay, setLastCheckedDay] = useState(7);
+  const [storedEventState] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("lunar-command-events-v1") || "null");
+    } catch {
+      return null;
+    }
+  });
+  const [activeEvent, setActiveEvent] = useState(() => {
+    if (!storedEventState?.activeEvent) return null;
+    const saved = storedEventState.activeEvent;
+    const template = EVENTS[saved.eventIndex];
+    return template ? { ...template, id: saved.id, day: saved.day, eventIndex: saved.eventIndex } : null;
+  });
+  const [eventLog, setEventLog] = useState(storedEventState?.eventLog ?? []);
+  const [lastCheckedDay, setLastCheckedDay] = useState(storedEventState?.lastCheckedDay ?? 7);
 
   useEffect(() => {
-    if (day <= lastCheckedDay) return;
+    try {
+      localStorage.setItem("lunar-command-events-v1", JSON.stringify({
+        activeEvent: activeEvent ? {
+          eventIndex: activeEvent.eventIndex,
+          id: activeEvent.id,
+          day: activeEvent.day
+        } : null,
+        eventLog,
+        lastCheckedDay
+      }));
+    } catch {
+      // Event state can still run for the current browser session.
+    }
+  }, [activeEvent, eventLog, lastCheckedDay]);
+
+  useEffect(() => {
+    if (activeEvent || day <= lastCheckedDay) return;
 
     setLastCheckedDay(day);
 
     const risk = getRisk(resources, crew);
+    const crewSignal = crew.reduce((sum, member) => sum + member.health + member.stamina, 0);
+    const resourceSignal = Object.values(resources).reduce((sum, value) => sum + Math.round(value), 0);
+    const stableRoll = ((day * 37 + crewSignal * 3 + resourceSignal * 7) % 100) / 100;
 
-    if (Math.random() < risk) {
-      const selected = EVENTS[Math.floor(Math.random() * EVENTS.length)];
+    if (stableRoll < risk) {
+      const eventIndex = (day * 11 + crewSignal + resourceSignal) % EVENTS.length;
+      const selected = EVENTS[eventIndex];
 
       setActiveEvent({
         ...selected,
-        id: `${day}-${Date.now()}`,
+        eventIndex,
+        id: `${day}-${eventIndex}`,
         day
       });
     }
-  }, [day, resources, crew, lastCheckedDay]);
+  }, [day, resources, crew, lastCheckedDay, activeEvent]);
 
   useEffect(() => {
     onPendingChange(Boolean(activeEvent));

@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   Activity, BatteryCharging, Droplets, Wind, Wheat,
   ShieldAlert, Satellite, Radio, Zap, Moon, ChevronRight,
@@ -29,7 +29,30 @@ import CrewManagement from "./CrewManagement";
 import MissionEvents from "./MissionEvents";
 import NASAReferences from "./NASAReferences";
 import MissionDebrief from "./MissionDebrief";
+import MissionTools from "./MissionTools";
+import { supabase } from "./auth/supabase";
 import "./App.css";
+
+const STORAGE_KEY = "lunar-command-mission-v2";
+const SLOTS_KEY = "lunar-command-save-slots-v1";
+
+function readStoredMission() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function readSaveSlots() {
+  try {
+    const raw = localStorage.getItem(SLOTS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
 
 const clamp = value => Math.max(0, Math.min(100, value));
 
@@ -133,26 +156,133 @@ function EmergencyPanel({
   );
 }
 
-export default function App() {
-  const [day, setDay] = useState(1);
-  const [resources, setResources] = useState({ ...INITIAL_RESOURCES });
-  const [crew, setCrew] = useState(
-    INITIAL_CREW.map(member => ({ ...member }))
-  );
-  const [event, setEvent] = useState(FIRST_EVENT);
-  const [eventMessage, setEventMessage] = useState("");
-  const [historyData, setHistoryData] = useState([
-    {
-      day: "01",
-      oxygen: INITIAL_RESOURCES.oxygen,
-      power: INITIAL_RESOURCES.power
-    }
+export default function App({ user }) {
+  const [cloudReady, setCloudReady] = useState(false);
+  const [cloudStatus, setCloudStatus] = useState("connecting");
+  const [savedMission] = useState(readStoredMission);
+  const [day, setDay] = useState(savedMission?.day ?? 1);
+  const [resources, setResources] = useState(savedMission?.resources ?? { ...INITIAL_RESOURCES });
+  const [crew, setCrew] = useState(savedMission?.crew ?? INITIAL_CREW.map(member => ({ ...member })));
+  const [event, setEvent] = useState(savedMission ? savedMission.event : FIRST_EVENT);
+  const [eventMessage, setEventMessage] = useState(savedMission?.eventMessage ?? "");
+  const [historyData, setHistoryData] = useState(savedMission?.historyData ?? [
+    { day: "01", oxygen: INITIAL_RESOURCES.oxygen, power: INITIAL_RESOURCES.power }
   ]);
-  const [missionEnded, setMissionEnded] = useState(false);
-  const [incidentHistory, setIncidentHistory] = useState([]);
-  const [recoveryLog, setRecoveryLog] = useState([]);
+  const [missionEnded, setMissionEnded] = useState(savedMission?.missionEnded ?? false);
+  const [incidentHistory, setIncidentHistory] = useState(savedMission?.incidentHistory ?? []);
+  const [recoveryLog, setRecoveryLog] = useState(savedMission?.recoveryLog ?? []);
   const [activeSection, setActiveSection] = useState("overview");
   const [randomEventPending, setRandomEventPending] = useState(false);
+  const [missionEpoch, setMissionEpoch] = useState(0);
+  const [saveSlots, setSaveSlots] = useState(readSaveSlots);
+  const [compactMode, setCompactMode] = useState(
+    () => localStorage.getItem("lunar-command-compact") === "true"
+  );
+  const [reducedMotion, setReducedMotion] = useState(
+    () => localStorage.getItem("lunar-command-reduced-motion") === "true"
+  );
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadCloudMission() {
+      setCloudStatus("loading");
+      try {
+        const { data, error } = await supabase
+          .from("user_missions")
+          .select("snapshot, updated_at")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (error) throw error;
+
+        if (data?.snapshot) {
+          const snapshot = data.snapshot;
+          setDay(snapshot.day ?? 1);
+          setResources(snapshot.resources ?? { ...INITIAL_RESOURCES });
+          setCrew(snapshot.crew ?? INITIAL_CREW.map(member => ({ ...member })));
+          setEvent(snapshot.event ?? FIRST_EVENT);
+          setEventMessage(snapshot.eventMessage ?? "Cloud mission restored.");
+          setHistoryData(snapshot.historyData ?? [
+            { day: "01", oxygen: INITIAL_RESOURCES.oxygen, power: INITIAL_RESOURCES.power }
+          ]);
+          setMissionEnded(snapshot.missionEnded ?? false);
+          setIncidentHistory(snapshot.incidentHistory ?? []);
+          setRecoveryLog(snapshot.recoveryLog ?? []);
+          if (Array.isArray(snapshot.saveSlots)) setSaveSlots(snapshot.saveSlots);
+          setCloudStatus("synced");
+        } else {
+          setCloudStatus("new");
+        }
+      } catch (error) {
+        console.error("Cloud mission load failed:", error);
+        if (active) setCloudStatus("error");
+      } finally {
+        if (active) setCloudReady(true);
+      }
+    }
+
+    if (user?.id) loadCloudMission();
+    else setCloudReady(true);
+
+    return () => { active = false; };
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!cloudReady) return;
+    const snapshot = {
+      version: 3, day, resources, crew, event, eventMessage, historyData,
+      missionEnded, incidentHistory, recoveryLog, saveSlots,
+      savedAt: new Date().toISOString()
+    };
+    try {
+      localStorage.setItem(`${STORAGE_KEY}:${user?.id ?? "local"}`, JSON.stringify(snapshot));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(snapshot));
+    } catch {
+      setEventMessage("Local autosave unavailable: browser storage may be full or disabled.");
+    }
+
+    if (!user?.id) return;
+    const timer = window.setTimeout(async () => {
+      setCloudStatus("saving");
+      const { error } = await supabase.from("user_missions").upsert({
+        user_id: user.id,
+        snapshot,
+        updated_at: new Date().toISOString()
+      }, { onConflict: "user_id" });
+      if (error) {
+        console.error("Cloud mission save failed:", error);
+        setCloudStatus("error");
+      } else {
+        setCloudStatus("synced");
+      }
+    }, 900);
+
+    return () => window.clearTimeout(timer);
+  }, [cloudReady, user?.id, day, resources, crew, event, eventMessage,
+      historyData, missionEnded, incidentHistory, recoveryLog, saveSlots]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SLOTS_KEY, JSON.stringify(saveSlots));
+    } catch {
+      // The active mission autosave remains independent of optional save slots.
+    }
+  }, [saveSlots]);
+
+  useEffect(() => {
+    localStorage.setItem("lunar-command-compact", String(compactMode));
+    document.documentElement.classList.toggle("reduced-motion", reducedMotion);
+    localStorage.setItem("lunar-command-reduced-motion", String(reducedMotion));
+  }, [compactMode, reducedMotion]);
+
+  const handleRandomEventPending = useCallback(pending => {
+    setRandomEventPending(pending);
+  }, []);
+
+  if (!cloudReady) {
+    return <div className="auth-loading">RESTORING YOUR CLOUD MISSION…</div>;
+  }
 
   const score = getMissionScore(resources, crew);
 
@@ -163,10 +293,6 @@ export default function App() {
       block: "start"
     });
   };
-
-  const handleRandomEventPending = useCallback(pending => {
-    setRandomEventPending(pending);
-  }, []);
 
   const applyDecision = option => {
     if (!event) return;
@@ -289,6 +415,7 @@ export default function App() {
   };
 
   const resetMission = () => {
+    if (!window.confirm("Start a new mission? Your current autosaved mission will be replaced.")) return;
     setDay(1);
     setResources({ ...INITIAL_RESOURCES });
     setCrew(INITIAL_CREW.map(member => ({ ...member })));
@@ -307,8 +434,60 @@ export default function App() {
     setIncidentHistory([]);
     setRecoveryLog([]);
     setRandomEventPending(false);
+    setMissionEpoch(value => value + 1);
+    localStorage.removeItem("lunar-command-events-v1");
 
     navigateTo("overview");
+  };
+
+  const getMissionSnapshot = () => ({
+    version: 2, day, resources, crew, event, eventMessage, historyData,
+    missionEnded, incidentHistory, recoveryLog, savedAt: new Date().toISOString()
+  });
+
+  const saveMissionSlot = (slotIndex, label) => {
+    const next = [...saveSlots];
+    next[slotIndex] = {
+      label: label?.trim() || `Save ${slotIndex + 1}`,
+      snapshot: getMissionSnapshot(),
+      savedAt: new Date().toISOString()
+    };
+    setSaveSlots(next);
+    setEventMessage(`Mission saved to ${next[slotIndex].label}.`);
+  };
+
+  const loadMissionSlot = slotIndex => {
+    const snapshot = saveSlots[slotIndex]?.snapshot;
+    if (!snapshot) return;
+    setDay(snapshot.day ?? 1);
+    setResources(snapshot.resources ?? { ...INITIAL_RESOURCES });
+    setCrew(snapshot.crew ?? INITIAL_CREW.map(member => ({ ...member })));
+    setEvent(snapshot.event ?? null);
+    setEventMessage(`Loaded ${saveSlots[slotIndex].label}.`);
+    setHistoryData(snapshot.historyData ?? []);
+    setMissionEnded(snapshot.missionEnded ?? false);
+    setIncidentHistory(snapshot.incidentHistory ?? []);
+    setRecoveryLog(snapshot.recoveryLog ?? []);
+    setRandomEventPending(false);
+    setMissionEpoch(value => value + 1);
+    localStorage.removeItem("lunar-command-events-v1");
+    navigateTo("overview");
+  };
+
+  const deleteMissionSlot = slotIndex => {
+    setSaveSlots(previous => previous.filter((_, index) => index !== slotIndex));
+  };
+
+  const exportMission = () => {
+    const blob = new Blob([JSON.stringify(getMissionSnapshot(), null, 2)], {
+      type: "application/json"
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `lunar-command-day-${day}-backup.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
   };
 
   const activeThreat = event?.severity || "NONE";
@@ -322,11 +501,12 @@ export default function App() {
     { id: "events", label: "Mission Events", icon: AlertTriangle },
     { id: "science", label: "NASA Science & Sources", icon: Satellite },
     { id: "analytics", label: "Mission Analytics", icon: Target },
-    { id: "history", label: "Mission History", icon: History }
+    { id: "history", label: "Mission History", icon: History },
+    { id: "mission-tools", label: "Save & Settings", icon: Shield }
   ];
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${compactMode ? "compact-mode" : ""}`}>
       <aside className="sidebar">
         <div className="brand">
           <div className="brand-mark">
@@ -349,6 +529,8 @@ export default function App() {
               className={`nav-item ${activeSection === item.id ? "active" : ""}`}
               onClick={() => navigateTo(item.id)}
               type="button"
+              title={item.label}
+              aria-label={item.label}
             >
               <Icon size={18} />
               {item.label}
@@ -376,6 +558,13 @@ export default function App() {
           <div className="top-right">
             <span className="sim-label">
               <Radio size={14} /> SIMULATION MODE
+            </span>
+            <span className={`cloud-sync cloud-${cloudStatus}`}>
+              <span /> {cloudStatus === "synced" ? "CLOUD SAVED" :
+                cloudStatus === "saving" ? "SAVING…" :
+                cloudStatus === "loading" ? "LOADING…" :
+                cloudStatus === "error" ? "CLOUD ERROR" :
+                cloudStatus === "new" ? "NEW CLOUD SAVE" : "CONNECTING"}
             </span>
             <div className="avatar">MC</div>
           </div>
@@ -670,6 +859,7 @@ export default function App() {
         </section>
 
         <MissionEvents
+          key={missionEpoch}
           day={day}
           resources={resources}
           crew={crew}
@@ -701,6 +891,21 @@ export default function App() {
             score={score}
           />
         </div>
+
+        <section id="mission-tools" className="navigation-anchor">
+          <MissionTools
+            saveSlots={saveSlots}
+            onSave={saveMissionSlot}
+            onLoad={loadMissionSlot}
+            onDelete={deleteMissionSlot}
+            onExport={exportMission}
+            compactMode={compactMode}
+            onCompactMode={setCompactMode}
+            reducedMotion={reducedMotion}
+            onReducedMotion={setReducedMotion}
+            savedAt={savedMission?.savedAt}
+          />
+        </section>
 
         <section className="bottom-actions">
           <div className="mission-message">
