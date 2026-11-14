@@ -1,0 +1,317 @@
+.environment-section {
+  margin-top: 38px;
+  margin-bottom: 30px;
+}
+
+.environment-layout {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap: 18px;
+}
+
+.environment-map-panel,
+.site-information,
+.environment-fact,
+.environment-warning,
+.nasa-sources {
+  background: #101d2a;
+  border: 1px solid #263849;
+  border-radius: 13px;
+}
+
+.environment-map-panel {
+  padding: 18px;
+  min-width: 0;
+}
+
+.environment-map-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  gap: 12px;
+}
+
+.environment-map-header h4,
+.site-information h4 {
+  margin: 7px 0 0;
+  color: #f3f7fc;
+  font-size: 19px;
+}
+
+.map-tag {
+  color: #45d9ed;
+  font-size: 10px;
+  border: 1px solid #28536a;
+  padding: 7px 9px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.lunar-map {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 0.88;
+  background: #050a10;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.lunar-map img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.map-marker {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 9px;
+  border-radius: 7px;
+  border: 1px solid #65788c;
+  background: rgba(8, 19, 30, 0.92);
+  color: #d9e8f6;
+  font-size: 10px;
+  cursor: pointer;
+  transition: 0.2s;
+  z-index: 2;
+}
+
+.map-marker:hover,
+.map-marker.selected {
+  border-color: #42d8ee;
+  color: #45d9ed;
+  background: #142c3c;
+  box-shadow: 0 0 15px rgba(53, 215, 238, 0.25);
+}
+
+.pole-marker {
+  left: 3%;
+  top: 46%;
+}
+
+.crater-marker {
+  left: 43%;
+  top: 48%;
+}
+
+.habitat-marker {
+  left: 67%;
+  top: 70%;
+  border-color: #45d99b;
+}
+
+.habitat-marker.selected {
+  border-color: #45d99b;
+  color: #45d99b;
+  background: #123027;
+}
+
+.map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 15px;
+  color: #93a7bc;
+  font-size: 11px;
+}
+
+.map-legend span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.map-legend i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.legend-pole {
+  background: #42d8ee;
+}
+
+.legend-crater {
+  background: #8c9cb1;
+}
+
+.legend-habitat {
+  background: #45d99b;
+}
+
+.map-credit {
+  color: #70869c;
+  font-size: 10px;
+  margin: 12px 0 0;
+}
+
+.environment-details {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  min-width: 0;
+}
+
+.site-information {
+  padding: 18px;
+}
+
+.site-type {
+  display: block;
+  margin-top: 14px;
+  color: #42d8ee;
+  font-size: 9px;
+  letter-spacing: 1px;
+}
+
+.site-information h4 {
+  font-size: 21px;
+}
+
+.site-information p,
+.environment-fact p,
+.environment-warning p {
+  color: #91a6bb;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.site-detail {
+  margin-top: 12px;
+  padding-top: 11px;
+  border-top: 1px solid #28394a;
+  color: #43d9ee;
+  font-size: 11px;
+}
+
+.environment-fact {
+  padding: 13px;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+
+.fact-icon {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+}
+
+.fact-icon.blue {
+  color: #55a7ff;
+  background: #192f49;
+}
+
+.fact-icon.purple {
+  color: #a99aff;
+  background: #2c2748;
+}
+
+.fact-icon.green {
+  color: #51dda0;
+  background: #183a32;
+}
+
+.fact-icon.orange {
+  color: #ffad61;
+  background: #3b2b20;
+}
+
+.environment-fact span {
+  display: block;
+  color: #8299af;
+  font-size: 9px;
+  letter-spacing: 1px;
+}
+
+.environment-fact strong {
+  display: block;
+  color: #eef5fc;
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+.environment-fact p {
+  margin: 4px 0 0;
+  font-size: 11px;
+}
+
+.environment-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 15px;
+  margin-top: 17px;
+  color: #52dca3;
+}
+
+.environment-warning strong {
+  font-size: 12px;
+  color: #dce9f4;
+}
+
+.environment-warning p {
+  margin: 5px 0 0;
+}
+
+.nasa-sources {
+  margin-top: 13px;
+  padding: 15px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 15px;
+}
+
+.nasa-sources > span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #43d9ee;
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+
+.nasa-sources a {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #91a8bf;
+  font-size: 11px;
+  text-decoration: none;
+}
+
+.nasa-sources a:hover {
+  color: #45d9ed;
+}
+
+@media (max-width: 900px) {
+  .environment-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 550px) {
+  .environment-map-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .map-marker {
+    font-size: 8px;
+    padding: 5px;
+  }
+
+  .nasa-sources {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
