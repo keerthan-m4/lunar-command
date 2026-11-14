@@ -27,6 +27,7 @@ import LunarEnvironment from "./LunarEnvironment";
 import MissionAnalytics from "./MissionAnalytics";
 import CrewManagement from "./CrewManagement";
 import MissionEvents from "./MissionEvents";
+import NASAReferences from "./NASAReferences";
 import MissionDebrief from "./MissionDebrief";
 import "./App.css";
 
@@ -319,6 +320,7 @@ export default function App() {
     { id: "crew", label: "Crew Management", icon: Users },
     { id: "emergency", label: "Emergency Center", icon: ShieldAlert },
     { id: "events", label: "Mission Events", icon: AlertTriangle },
+    { id: "science", label: "NASA Science & Sources", icon: Satellite },
     { id: "analytics", label: "Mission Analytics", icon: Target },
     { id: "history", label: "Mission History", icon: History }
   ];
@@ -674,6 +676,10 @@ export default function App() {
           onPendingChange={handleRandomEventPending}
           onApply={handleMissionEvent}
         />
+
+        <section id="science" className="navigation-anchor">
+          <NASAReferences />
+        </section>
 
         {missionEnded && (
           <MissionDebrief
